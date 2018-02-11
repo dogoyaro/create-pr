@@ -9,7 +9,7 @@ Uses Python and bash scripts to help semi-automate PR creation using Andela Engi
 
 ## Prequesites
 - Have > python 2 installed
-- Make sure user.name on your terminal is the same as your account username on Github
+- Make sure `user.name` on your terminal is the same as your account username on Github
   
     check by making sure: 
     ``git config user.name == (Signed in as: when you click on your profile on the top right of Github.com)``
