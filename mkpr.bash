@@ -16,7 +16,7 @@ OPTIONS:
 -f Force a pull request
 -b base branch
 -t title
--d descriptio
+-d description
 EOF
 }
 
