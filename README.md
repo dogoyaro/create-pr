@@ -1,5 +1,5 @@
 # create-pr
-Uses Python and bash scripts to help semi-automate PR creation using Andela Engineering conventions
+Uses Python and bash scripts to help semi-automate PR creation using Andela Engineering conventions from terminal
 
 
 ## Features
