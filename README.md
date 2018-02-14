@@ -7,7 +7,7 @@ Uses Python and bash scripts to help semi-automate PR creation using Andela Engi
 - Automatically create PR on github using the `--create` option.
 - Ended process during input? continue from where you stopped using the `--continue` opt
 
-## Prequesites
+## Pre-requisites
 - Have > python 2 installed
 - bash or zsh shell
 - Make sure `user.name` on your terminal is the same as your account username on Github
