@@ -1,4 +1,6 @@
 from os import remove, system
+import subprocess
+import requests
 import sys
 
 questions = ['#### What does this PR do?',
@@ -10,6 +12,60 @@ questions = ['#### What does this PR do?',
              '#### What are the relevant pivotal tracker stories?']
 answers = ['' for i in range(len(questions))]
 options = [option for option in sys.argv]
+
+
+def getNameOfBranch():
+    reference_file = open('./.git/HEAD')
+    branch_ref = reference_file.readline()
+    reference_file.close()
+    branch_name = branch_ref.split('/')[-1]
+    return branch_name
+
+
+def isRemoteUpdated():
+    branch_name = getNameOfBranch()
+    branch_head = open('./.git/refs/heads/{}'.format(branch_name[:-1]))
+    branch_commit = branch_head.readline()
+    branch_head.close()
+    try:
+        remote_head = open('./.git/refs/remotes/origin/{}'.format(branch_name))
+        remote_commit = remote_head.readline()
+        remote_head.close()
+        if branch_commit == remote_commit:
+            return True
+        return False
+    except IOError:
+        return False
+
+
+def isNothingToCommit():
+    proc = subprocess.Popen(
+            ["git status"],
+            stdout=subprocess.PIPE,
+            shell=True)
+    (out, err) = proc.communicate()
+    lines = out.split('\n')
+    status = lines[1].split(' ')[0]
+    if status == 'nothing':
+        return True
+    return False
+
+
+def getContributorName():
+    ref_file = open('./.git/logs/HEAD')
+    logs = ref_file.readlines()
+    ref_file.close()
+    commit = logs[-1]
+    token = commit.split(' ')
+    name = token[2]
+    return name
+
+
+def getProjectUrl():
+    config_file = open('./.git/config')
+    for line in config_file.readlines():
+        if 'url' in line:
+            return line.split('=')[1].strip()[:-4]
 
 
 def getInput(index):
@@ -41,6 +97,42 @@ def continueFromUserEnd():
         write_pr(question_index, 'a')
     except IOError:
         print('You were not on a previous operation, run `python mkpr.py` to start one')
+
+
+def call_api(title, base_branch, description):
+    if isRemoteUpdated():
+        print('Hollup, Hollup.. You have not pushed your changes')
+        return
+    if isNothingToCommit():
+        print('Hollup, Hollup.. You have changes that are not committed')
+        return
+    branch = getNameOfBranch().strip()
+    contributor = getContributorName()
+    project = getProjectUrl()
+    #  curl_string = 'curl --user {contributor} --data {data} {url}/pulls'
+    data = {
+            "title": title,
+            "base": base_branch,
+            "head": branch,
+            "body": description
+            }
+    headers = {
+            "user": contributor
+            }
+    result = requests.post(project, data=data, headers=headers)
+    print(result)
+    print(dir(result))
+    print(result.content)
+    print(result.text)
+    #  request = curl_string.format(
+            #  contributor=contributor,
+            #  data=data,
+            #  url=project)
+    #  print(request)
+    #  system(request)
+
+
+call_api('some title', 'develop', 'this is the description')
 
 
 def create_pr():
@@ -120,8 +212,8 @@ def show_pr(title, branch, description):
     print(description)
 
 
-if '--continue' in options:
-    continueFromUserEnd()
-else:
-    index = 0
-    write_pr(index, 'w')
+#  if '--continue' in options:
+    #  continueFromUserEnd()
+#  else:
+    #  index = 0
+    #  write_pr(index, 'w')
