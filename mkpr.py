@@ -2,6 +2,7 @@ from os import remove, system
 import subprocess
 import requests
 import sys
+import json
 
 questions = ['#### What does this PR do?',
              '#### Description of task to be completed?',
@@ -71,10 +72,7 @@ def getProjectUrl():
 def getInput(index):
     answer = ''
     while True:
-        try:
-            line = str(raw_input())
-        except NameError:
-            line = input()
+        line = custom_input()
         if len(line) < 1:
             break
         answer += line + '\n'
@@ -101,38 +99,38 @@ def continueFromUserEnd():
 
 def call_api(title, base_branch, description):
     if isRemoteUpdated():
-        print('Hollup, Hollup.. You have not pushed your changes')
+        print('hollup, hollup.. you have not pushed your changes')
         return
     if isNothingToCommit():
-        print('Hollup, Hollup.. You have changes that are not committed')
+        print('hollup, hollup.. you have changes that are not committed')
         return
     branch = getNameOfBranch().strip()
     contributor = getContributorName()
     project = getProjectUrl()
-    #  curl_string = 'curl --user {contributor} --data {data} {url}/pulls'
+    password = getPassword()
+    project = '/'.join(project.split('/')[-2:])
     data = {
             "title": title,
             "base": base_branch,
             "head": branch,
-            "body": description
+            "body": description,
             }
+    data = json.dumps(data, ensure_ascii=False)
     headers = {
-            "user": contributor
+            "user": contributor,
+            "password": password
             }
-    result = requests.post(project, data=data, headers=headers)
-    print(result)
-    print(dir(result))
-    print(result.content)
-    print(result.text)
-    #  request = curl_string.format(
-            #  contributor=contributor,
-            #  data=data,
-            #  url=project)
-    #  print(request)
-    #  system(request)
-
-
-call_api('some title', 'develop', 'this is the description')
+    request_url = 'https://api.github.com/repos/{}/pulls'.format(project)
+    print(request_url)
+    result = requests.post(request_url,
+                           auth=(headers['user'],
+                                 headers['password']), data=data)
+    if result.status_code == 201:
+        print('Welldone o, your PR is waiting for you on github')
+        return
+    else:
+        print('Chai, something terrible has happened, still find your description in pull-request.txt')
+    return result
 
 
 def create_pr():
@@ -141,29 +139,17 @@ def create_pr():
     print('   ========================================   ')
     print('==============================================')
     if '--create' in options:
-        try:
-            print('create PR against what branch?')
-            branch = raw_input()
-        except NameError:
-            branch = input()
+        print('create PR against what branch?')
+        branch = custom_input()
         description_file = open('pull-request.txt')
         description = ''.join(description_file.readlines())
         description_file.close()
-        try:
-            print('Enter the title of the PR:')
-            title = raw_input().encode('string-escape')
-        except NameError:
-            title = input().encode('string-escape')
+        print('Enter the title of the PR:')
+        title = custom_input().encode('string-escape')
         show_pr(title, branch, description)
-        try:
-            confirm = raw_input('This good? (yes/no): ')
-        except NameError:
-            confirm = input('This good? (yes/no): ')
+        confirm = custom_input('This good? (yes/no): ')
         if (confirm[0].lower() == 'y'):
-            print('1) Running bash script with admin privileges, if prompted enter computer password ')
-            command_string = "sudo bash ./mkpr.bash -b \"{}\" -t \"{}\" -d '{}'"
-            command = command_string.format(branch, title, description.encode('string-escape'))
-            system(command)
+            call_api(title, branch, description)
         else:
             print('Start over `python mkpr.py` or go on github.com to make your pr directly')
 
@@ -212,8 +198,33 @@ def show_pr(title, branch, description):
     print(description)
 
 
-#  if '--continue' in options:
-    #  continueFromUserEnd()
-#  else:
-    #  index = 0
-    #  write_pr(index, 'w')
+def custom_input(description=''):
+    try:
+        value = raw_input(description)
+    except NameError:
+        value = input(description)
+    return value
+
+
+def getPassword():
+    try:
+        with open('.mkpr') as password_file:
+            password = password_file.readline()
+    except IOError:
+        print('Please enter your github password to make pull request')
+        password = custom_input()
+        print('We can store the password so you don\'t do this every time?')
+        confirm = custom_input("(yes/no): ")
+        if (confirm[0].lower() == 'y'):
+            with open('.mkpr', mode='w+') as password_file:
+                password_file.write(password)
+        return password
+    else:
+        return password
+
+
+if '--continue' in options:
+    continueFromUserEnd()
+else:
+    index = 0
+    write_pr(index, 'w')
