@@ -218,8 +218,7 @@ def getPassword():
         if (confirm[0].lower() == 'y'):
             with open('.mkpr', mode='w+') as password_file:
                 password_file.write(password)
-        return password
-    else:
+    finally:
         return password
 
 
