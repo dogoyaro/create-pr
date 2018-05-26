@@ -1,10 +1,11 @@
 #!/user/bin/env python3
 
-from os import remove
+from os import getcwd
 import subprocess
 import requests
 import sys
 import json
+
 
 questions = ['#### What does this PR do?',
              '#### Description of task to be completed?',
@@ -13,31 +14,50 @@ questions = ['#### What does this PR do?',
              '#### Screenshots?',
              '#### Questions?',
              '#### What are the relevant pivotal tracker stories?']
+
 answers = ['' for i in range(len(questions))]
 options = [option for option in sys.argv]
 
+cwd = getcwd()
+
+
+def openGitFile(path):
+    return open('{}{}'.format(cwd, path))
+
 
 def getNameOfBranch():
-    reference_file = open('./.git/HEAD')
-    branch_ref = reference_file.readline()
-    reference_file.close()
-    branch_name = branch_ref.split('/')[-1]
-    return branch_name
+    try:
+        reference_file = openGitFile('/.git/HEAD')
+    except FileNotFoundError:
+        print("==========Please make sure you're in a Git working directory")
+        raise FileNotFoundError
+    else:
+        branch_ref = reference_file.readline()
+        reference_file.close()
+        branch_name = branch_ref.split('/')[-1]
+        return branch_name
 
 
 def isRemoteUpdated():
     branch_name = getNameOfBranch()
-    branch_head = open('./.git/refs/heads/{}'.format(branch_name[:-1]))
-    branch_commit = branch_head.readline()
-    branch_head.close()
     try:
-        remote_head = open('./.git/refs/remotes/origin/{}'.format(branch_name))
-        remote_commit = remote_head.readline()
-        remote_head.close()
+        head = openGitFile('/.git/refs/heads/{}'.format(branch_name[:-1]))
+    except FileNotFoundError:
+        print("============Please make sure you're in a Git working directory")
+        raise FileNotFoundError
+    else:
+        branch_commit = head.readline()
+        try:
+            remote_head = openGitFile(
+                            '/.git/refs/remotes/origin/{}'
+                            .format(branch_name[:-1]))
+            remote_commit = remote_head.readline()
+        except (IOError, FileNotFoundError):
+            return False
         if branch_commit == remote_commit:
             return True
-        return False
-    except IOError:
+        remote_head.close()
+        head.close()
         return False
 
 
@@ -47,7 +67,7 @@ def isNothingToCommit():
             stdout=subprocess.PIPE,
             shell=True)
     (out, err) = proc.communicate()
-    lines = out.split('\n')
+    lines = out.decode("utf-8").split('\n')
     status = lines[1].split(' ')[0]
     if status == 'nothing':
         return True
@@ -55,17 +75,22 @@ def isNothingToCommit():
 
 
 def getContributorName():
-    ref_file = open('./.git/logs/HEAD')
-    logs = ref_file.readlines()
-    ref_file.close()
-    commit = logs[-1]
-    token = commit.split(' ')
-    name = token[2]
-    return name
+    try:
+        ref_file = openGitFile('/.git/logs/HEAD')
+    except FileNotFoundError:
+        print("============Please make sure you're in a Git working directory")
+        raise FileNotFoundError
+    else:
+        logs = ref_file.readlines()
+        commit = logs[-1]
+        token = commit.split(' ')
+        name = token[2]
+        ref_file.close()
+        return name
 
 
 def getProjectUrl():
-    config_file = open('./.git/config')
+    config_file = openGitFile('/.git/config')
     for line in config_file.readlines():
         if 'url' in line:
             return line.split('=')[1].strip()[:-4]
